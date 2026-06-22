@@ -1,0 +1,63 @@
+# CinemaTogether Bot v33 production compose file
+# Run either bot polling or webhook profile, not multiple bot workers.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cinema_together
+      POSTGRES_USER: cinema
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-now}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cinema -d cinema_together"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    command: ["python", "run.py"]
+
+  webhook:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+    command: ["uvicorn", "app.webhook_server:app", "--host", "0.0.0.0", "--port", "8000"]
+    profiles: ["webhook"]
+
+volumes:
+  postgres_data:
+  redis_data:

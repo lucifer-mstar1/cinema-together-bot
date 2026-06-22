@@ -1,0 +1,17 @@
+[Unit]
+Description=CinemaTogether Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cinema_together_bot
+EnvironmentFile=/opt/cinema_together_bot/.env
+ExecStart=/opt/cinema_together_bot/.venv/bin/python run.py
+Restart=always
+RestartSec=5
+User=cinema
+Group=cinema
+
+[Install]
+WantedBy=multi-user.target
