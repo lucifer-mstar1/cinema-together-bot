@@ -514,7 +514,13 @@ async def cmd_start(message: Message, state: FSMContext, command: CommandObject 
     except Exception as exc:
         logger.exception("TEMP start debug send failed: %s", exc)
 
-    await state.clear()
+    try:
+        await state.clear()
+        await message.bot.send_message(message.chat.id, "✅ state.clear passed.")
+    except Exception as exc:
+        logger.exception("TEMP state.clear failed: %s", exc)
+        await message.bot.send_message(message.chat.id, f"❌ state.clear failed: {type(exc).__name__}: {exc}")
+        return
     start_arg = (command.args if command else None) or ""
     watch_code = normalize_watch_start_arg(start_arg) if start_arg else ""
     async with SessionLocal() as session:
