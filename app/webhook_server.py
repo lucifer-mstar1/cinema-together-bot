@@ -78,14 +78,5 @@ async def telegram_webhook(
     data = await request.json()
     update = Update.model_validate(data, context={"bot": bot})
 
-    # TEMP DEPLOY DEBUG: prove Render webhook can send a Telegram message.
-    try:
-        msg = getattr(update, "message", None)
-        if msg and getattr(msg, "text", None) in {"/debug", "/ping"}:
-            await bot.send_message(msg.chat.id, "✅ Render webhook debug reply works.")
-            return {"ok": True}
-    except Exception as exc:
-        logger.exception("Debug reply failed: %s", exc)
-
     await dp.feed_update(bot, update)
     return {"ok": True}

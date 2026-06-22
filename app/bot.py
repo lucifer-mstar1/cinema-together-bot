@@ -509,51 +509,39 @@ async def fresh_start_callback(callback: CallbackQuery, state: FSMContext) -> No
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, command: CommandObject | None = None) -> None:
-    try:
-        await message.bot.send_message(message.chat.id, "✅ /start handler reached.")
+    lang = "uz"
 
+    try:
         await state.clear()
-        await message.bot.send_message(message.chat.id, "✅ state.clear passed.")
 
         start_arg = (command.args if command else None) or ""
         watch_code = normalize_watch_start_arg(start_arg) if start_arg else ""
 
         async with SessionLocal() as session:
-            await message.bot.send_message(message.chat.id, "✅ DB session opened.")
-
             user = await get_or_create_user(session, message.from_user)
-            lang = user.preferred_language
-            await message.bot.send_message(
-                message.chat.id,
-                f"✅ user loaded. lang={lang}, onboarded={user.onboarded}, admin={user.is_admin}"
-            )
+            lang = user.preferred_language or "uz"
 
             if admin_username_allowed(message.from_user):
                 user.is_admin = True
                 user.onboarded = True
                 await session.commit()
-                await message.bot.send_message(message.chat.id, "✅ admin detected. Sending admin menu...")
                 await message.answer(
                     t("admin_menu", lang),
                     parse_mode=ParseMode.HTML,
                     reply_markup=admin_panel_kb(lang),
                 )
-                await message.bot.send_message(message.chat.id, "✅ admin menu sent.")
                 return
 
             active_restriction, restriction = await is_telegram_restricted(session, user.telegram_id)
-            await message.bot.send_message(message.chat.id, "✅ restriction check passed.")
-
-            if active_restriction and not user.is_admin:
+            if active_restriction:
                 await message.answer(t("banned_until", lang).format(time=restriction_remaining_text(restriction)))
                 return
 
-            if user.is_banned and not user.is_admin:
+            if user.is_banned:
                 await message.answer(t("banned", lang))
                 return
 
             if user.onboarded:
-                await message.bot.send_message(message.chat.id, "✅ onboarded path.")
                 if watch_code:
                     await offer_movie_to_active_context(message, session, user, watch_code)
                     return
@@ -570,19 +558,14 @@ async def cmd_start(message: Message, state: FSMContext, command: CommandObject 
                 await save_pending_watch_intent(session, int(message.from_user.id), watch_code)
 
         await state.set_state(Onboarding.language)
-        await message.bot.send_message(message.chat.id, "✅ setting onboarding language. Sending welcome...")
         await message.answer(t("welcome_all", lang), reply_markup=language_kb())
-        await message.bot.send_message(message.chat.id, "✅ welcome sent.")
 
     except Exception as exc:
-        logger.exception("TEMP /start debug failed: %s", exc)
-        try:
-            await message.bot.send_message(
-                message.chat.id,
-                f"❌ /start failed: {type(exc).__name__}: {exc}"
-            )
-        except Exception:
-            logger.exception("Could not send /start debug failure to Telegram")
+        logger.exception("Start command failed: %s", exc)
+        await message.answer(
+            "⚠️ Bot ishga tushdi, lekin menyu yuklashda xatolik bo‘ldi.\n"
+            "Iltimos, 10 soniyadan keyin /start ni qayta bosing."
+        )
 
 
 @router.message(Onboarding.language)
