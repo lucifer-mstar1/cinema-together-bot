@@ -509,6 +509,11 @@ async def fresh_start_callback(callback: CallbackQuery, state: FSMContext) -> No
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, command: CommandObject | None = None) -> None:
+    try:
+        await message.bot.send_message(message.chat.id, "✅ /start handler reached.")
+    except Exception as exc:
+        logger.exception("TEMP start debug send failed: %s", exc)
+
     await state.clear()
     start_arg = (command.args if command else None) or ""
     watch_code = normalize_watch_start_arg(start_arg) if start_arg else ""
