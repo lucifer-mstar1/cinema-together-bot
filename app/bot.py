@@ -563,8 +563,7 @@ async def cmd_start(message: Message, state: FSMContext, command: CommandObject 
     except Exception as exc:
         logger.exception("Start command failed: %s", exc)
         await message.answer(
-            "⚠️ Bot ishga tushdi, lekin menyu yuklashda xatolik bo‘ldi.\n"
-            "Iltimos, 10 soniyadan keyin /start ni qayta bosing."
+            f"❌ /start error:\n{type(exc).__name__}: {exc}"
         )
 
 
